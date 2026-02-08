@@ -2,6 +2,7 @@
 <package version="801">
 	<kit name="h3d_merge_tools" restart="YES">
 		<source target="h3d_merge_tools/scripts/alternative_merge_meshes.py">scripts/alternative_merge_meshes.py</source>
+		<source target="h3d_merge_tools/scripts/safe_merge.py">scripts/safe_merge.py</source>
 		<source target="h3d_merge_tools/index.cfg">index.cfg</source>
 	</kit>
 	<message button="Help">h3d_merge_tools Kit installation complete.</message>
