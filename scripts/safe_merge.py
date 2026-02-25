@@ -48,7 +48,11 @@ def safe_merge_meshes(target_mesh: modo.Mesh, merging_meshes: Iterable[modo.Mesh
 
     vmap_normal_maps = set()
     for mesh in [target_mesh, *merging_meshes]:
-        vmap_normal_maps.update(mesh.geometry.vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL))
+        vmaps = mesh.geometry.vmaps
+        if vmaps is None:
+            raise ValueError(f"Mesh {mesh.name} has no vmaps interface.")
+
+        vmap_normal_maps.update(vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL))
 
     print(vmap_normal_maps)
 
@@ -68,7 +72,11 @@ def get_vmap_normal_stats(meshes: Iterable[modo.Mesh]) -> VMAP_NORMAL_NAMES_STAT
     vmap_normal_names = set()
     multiple_on_same_mesh = False
     for mesh in meshes:
-        vmap_normal_maps = mesh.geometry.vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL)
+        vmaps = mesh.geometry.vmaps
+        if vmaps is None:
+            raise ValueError(f"Mesh {mesh.name} has no vmaps interface.")
+
+        vmap_normal_maps = vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL)
         if len(vmap_normal_maps) > 1:
             multiple_on_same_mesh = True
         for vmap in vmap_normal_maps:
