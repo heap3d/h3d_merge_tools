@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # ================================
-# (C)2025 Dmytro Holub
+# (C)2025-2026 Dmytro Holub
 # heap3d@gmail.com
 # --------------------------------
 # modo python
@@ -22,8 +22,6 @@ from h3d_utilites.scripts.h3d_utils import (
     itype_str,
 )
 
-from h3d_utilites.scripts.h3d_debug import h3dd, prints
-
 USERVAL_VMAP_NORMAL_PERFECT_NAME = 'h3d_mrgt_vmap_normal_perfect_name'
 DEFAULT_VMAP_NORMAL_PERFECT_NAME = 'normals'
 
@@ -39,9 +37,6 @@ class VMAP_NORMAL_NAMES_STATS:
 def main():
     selected_items: list[modo.Item] = [i for i in modo.Scene().selected if i.type in SELECTED_TYPES]
 
-    prints(SELECTED_TYPES)
-    prints(selected_items)
-
     if len(selected_items) < 2:
         print('Select at least 2 meshes to merge.')
         return
@@ -53,38 +48,13 @@ def main():
     target_item = selected_items[0]
     merging_items = selected_items[1:]
 
-    prints(target_item)
-    prints(merging_items)
-
     safe_merge_meshes(target_item, merging_items, vmap_normal_perfect_name)
 
 
 def safe_merge_meshes(target_item: modo.Item, merging_items: Iterable[modo.Item], perfect_vmap_normal_name: str):
-    if target_item.type != itype_str(c.MESH_TYPE):
-        raise ValueError(f'Target item {target_item.name} is not a mesh.')
-    if any(mesh.type != itype_str(c.MESH_TYPE) for mesh in merging_items):
-        raise ValueError('All merging items must be of type "mesh".')
-
-    vmap_normal_maps = set()
-    for mesh in [target_item, *merging_items]:
-        vmaps = mesh.geometry.vmaps
-        if vmaps is None:
-            raise ValueError(f'Mesh {mesh.name} has no vmaps interface.')
-
-        vmap_normal_maps.update(vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL))
-
-    print(vmap_normal_maps)
-
     meshes: list[modo.Item] = [i for i in merging_items if i.type == itype_str(c.MESH_TYPE)]
-    prints(meshes)
     instances: list[modo.Item] = [i for i in merging_items if i.type == itype_str(c.MESHINST_TYPE)]
-    prints(instances)
     affected_instances = list(set(get_instances_of(meshes)) - set(instances))
-    prints(affected_instances)
-
-    converted_meshes = instances_to_meshes(instances)
-
-    h3dd.exit('after instances_to_meshes(instances)')
 
     if affected_instances:
         mesh_instance = affected_instances[0]
@@ -92,6 +62,16 @@ def safe_merge_meshes(target_item: modo.Item, merging_items: Iterable[modo.Item]
         swap_items(mesh, mesh_instance)
 
         meshes.remove(mesh)
+
+    converted_meshes = instances_to_meshes(instances)
+
+    vmap_normal_maps = set()
+    for mesh in [target_item, *meshes, *converted_meshes]:
+        vmaps = mesh.geometry.vmaps
+        if vmaps is None:
+            raise ValueError(f'Mesh {mesh.name} has no vmaps interface.')
+
+        vmap_normal_maps.update(vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL))
 
     merge_meshes(target_item, meshes+converted_meshes)
 
@@ -159,14 +139,10 @@ def get_instance_source(instance: modo.Item) -> modo.Item:
 
 
 def instances_to_meshes(items: Iterable[modo.Item]) -> list[modo.Mesh]:
-    prints('Converting instances to meshes:')
-    prints(items)
     meshes = []
     modo.Scene().deselect()
     for item in items:
         item.select()
-
-    h3dd.exit('after selecting items to convert to meshes')
 
     lx.eval('item.setType Mesh')
     meshes.extend(modo.Scene().selectedByType(itype=c.MESH_TYPE))

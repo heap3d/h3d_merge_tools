@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # ================================
-# (C)2025 Dmytro Holub
+# (C)2025-2026 Dmytro Holub
 # heap3d@gmail.com
 # --------------------------------
 # modo python
@@ -9,7 +9,6 @@
 # ================================
 
 import modo
-import modo.constants as c
 
 from h3d_utilites.scripts.h3d_utils import get_user_value
 
@@ -19,8 +18,6 @@ from h3d_merge_tools.scripts.safe_merge import (
     SELECTED_TYPES,
     safe_merge_meshes,
 )
-
-from h3d_utilites.scripts.h3d_debug import h3dd, prints
 
 
 def main():
@@ -36,13 +33,8 @@ def main():
     if not vmap_normal_perfect_name:
         vmap_normal_perfect_name = DEFAULT_VMAP_NORMAL_PERFECT_NAME
 
-    prints(target_mesh)
-    prints(merging_meshes)
-    prints(vmap_normal_perfect_name)
-
     safe_merge_meshes(target_mesh, merging_meshes, vmap_normal_perfect_name)
 
 
 if __name__ == '__main__':
-    h3dd.enable_debug_output()
     main()
