@@ -62,6 +62,7 @@ def safe_merge_meshes(target_item: modo.Item, merging_items: Iterable[modo.Item]
         swap_items(mesh, mesh_instance)
 
         meshes.remove(mesh)
+        instances.append(mesh_instance)
 
     converted_meshes = instances_to_meshes(instances)
 
