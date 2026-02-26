@@ -15,11 +15,19 @@ import modo
 import modo.constants as c
 import lx
 
-from h3d_utilites.scripts.h3d_utils import get_user_value, parent_items_to, get_parent_index
+from h3d_utilites.scripts.h3d_utils import (
+    get_user_value,
+    parent_items_to,
+    get_parent_index,
+    itype_str,
+)
 
+from h3d_utilites.scripts.h3d_debug import h3dd, prints
 
-USERVAL_VMAP_NORMAL_PERFECT_NAME = "h3d_mrgt_vmap_normal_perfect_name"
-DEFAULT_VMAP_NORMAL_PERFECT_NAME = "normals"
+USERVAL_VMAP_NORMAL_PERFECT_NAME = 'h3d_mrgt_vmap_normal_perfect_name'
+DEFAULT_VMAP_NORMAL_PERFECT_NAME = 'normals'
+
+SELECTED_TYPES = (itype_str(c.MESH_TYPE), itype_str(c.MESHINST_TYPE))
 
 
 @dataclass
@@ -29,61 +37,74 @@ class VMAP_NORMAL_NAMES_STATS:
 
 
 def main():
-    selected_meshes: list[modo.Item] = modo.Scene().selectedByType(itype=c.MESH_TYPE)
-    selected_instances: list[modo.Item] = modo.Scene().selectedByType(itype=c.MESHINST_TYPE)
-    affected_instances = list(set(get_instances_of(selected_meshes)) - set(selected_instances))
+    selected_items: list[modo.Item] = [i for i in modo.Scene().selected if i.type in SELECTED_TYPES]
 
-    if len(selected_meshes) < 2:
-        print("Select at least 2 meshes to merge.")
+    prints(SELECTED_TYPES)
+    prints(selected_items)
+
+    if len(selected_items) < 2:
+        print('Select at least 2 meshes to merge.')
         return
 
     vmap_normal_perfect_name = get_user_value(USERVAL_VMAP_NORMAL_PERFECT_NAME)
     if not vmap_normal_perfect_name:
         vmap_normal_perfect_name = DEFAULT_VMAP_NORMAL_PERFECT_NAME
 
-    if affected_instances:
-        mesh_instance = affected_instances[0]
-        mesh = get_instance_source(mesh_instance)
-        swap_items(mesh, mesh_instance)
+    target_item = selected_items[0]
+    merging_items = selected_items[1:]
 
-        selected_meshes.remove(mesh)
+    prints(target_item)
+    prints(merging_items)
 
-    converted_meshes = instances_to_meshes(selected_instances)
-
-    target_mesh = selected_meshes[0]
-    merging_meshes = selected_meshes[1:] + converted_meshes
-
-    safe_merge_meshes(target_mesh, merging_meshes, vmap_normal_perfect_name)
+    safe_merge_meshes(target_item, merging_items, vmap_normal_perfect_name)
 
 
-def safe_merge_meshes(target_mesh: modo.Item, merging_meshes: Iterable[modo.Item], perfect_vmap_normal_name: str):
-    if target_mesh.type != 'mesh':
-        raise ValueError(f"Target mesh {target_mesh.name} is not a mesh.")
-    if any(mesh.type != 'mesh' for mesh in merging_meshes):
-        raise ValueError("All merging items must be of type 'mesh'.")
+def safe_merge_meshes(target_item: modo.Item, merging_items: Iterable[modo.Item], perfect_vmap_normal_name: str):
+    if target_item.type != itype_str(c.MESH_TYPE):
+        raise ValueError(f'Target item {target_item.name} is not a mesh.')
+    if any(mesh.type != itype_str(c.MESH_TYPE) for mesh in merging_items):
+        raise ValueError('All merging items must be of type "mesh".')
 
     vmap_normal_maps = set()
-    for mesh in [target_mesh, *merging_meshes]:
+    for mesh in [target_item, *merging_items]:
         vmaps = mesh.geometry.vmaps
         if vmaps is None:
-            raise ValueError(f"Mesh {mesh.name} has no vmaps interface.")
+            raise ValueError(f'Mesh {mesh.name} has no vmaps interface.')
 
         vmap_normal_maps.update(vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL))
 
     print(vmap_normal_maps)
 
-    merge_meshes(target_mesh, merging_meshes)
+    meshes: list[modo.Item] = [i for i in merging_items if i.type == itype_str(c.MESH_TYPE)]
+    prints(meshes)
+    instances: list[modo.Item] = [i for i in merging_items if i.type == itype_str(c.MESHINST_TYPE)]
+    prints(instances)
+    affected_instances = list(set(get_instances_of(meshes)) - set(instances))
+    prints(affected_instances)
+
+    converted_meshes = instances_to_meshes(instances)
+
+    h3dd.exit('after instances_to_meshes(instances)')
+
+    if affected_instances:
+        mesh_instance = affected_instances[0]
+        mesh = get_instance_source(mesh_instance)
+        swap_items(mesh, mesh_instance)
+
+        meshes.remove(mesh)
+
+    merge_meshes(target_item, meshes+converted_meshes)
 
 
-def merge_meshes(target_mesh: modo.Item, merging_meshes: Iterable[modo.Item]):
-    if target_mesh.type != 'mesh':
-        raise ValueError(f"Target mesh {target_mesh.name} is not a mesh.")
-    if any(mesh.type != 'mesh' for mesh in merging_meshes):
-        raise ValueError("All merging items must be of type 'mesh'.")
+def merge_meshes(target_item: modo.Item, merging_items: Iterable[modo.Item]):
+    if target_item.type != itype_str(c.MESH_TYPE):
+        raise ValueError(f'Target item {target_item.name} is not a mesh.')
+    if any(mesh.type != itype_str(c.MESH_TYPE) for mesh in merging_items):
+        raise ValueError('All merging items must be of type "mesh".')
 
     modo.Scene().deselect()
-    target_mesh.select()
-    for mesh in merging_meshes:
+    target_item.select()
+    for mesh in merging_items:
         mesh.select()
 
     lx.eval('layer.mergeMeshes true')
@@ -95,7 +116,7 @@ def get_vmap_normal_stats(meshes: Iterable[modo.Mesh]) -> VMAP_NORMAL_NAMES_STAT
     for mesh in meshes:
         vmaps = mesh.geometry.vmaps
         if vmaps is None:
-            raise ValueError(f"Mesh {mesh.name} has no vmaps interface.")
+            raise ValueError(f'Mesh {mesh.name} has no vmaps interface.')
 
         vmap_normal_maps = vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL)
         if len(vmap_normal_maps) > 1:
@@ -114,7 +135,7 @@ def get_vmap_normal_stats(meshes: Iterable[modo.Mesh]) -> VMAP_NORMAL_NAMES_STAT
 def get_instances(item: modo.Item) -> list[modo.Item]:
     instances = item.itemGraph('source').reverse()
     if not isinstance(instances, list):
-        raise ValueError(f'Error getting instances for the <{item.name}> item')
+        raise ValueError(f'Error getting instances for the <{item.name}> item.')
     return instances
 
 
@@ -127,21 +148,25 @@ def get_instances_of(meshes: list[modo.Item]) -> list[modo.Item]:
 
 def get_instance_source(instance: modo.Item) -> modo.Item:
     if instance is None:
-        raise ValueError('instance item error: value is None')
+        raise ValueError('instance item error: value is None.')
     if not instance.isAnInstance:
         return instance
 
     try:
         return instance.itemGraph('source').forward()[0]  # type:ignore
     except IndexError:
-        raise ValueError('Failed to get source of instance from item graph "source"')
+        raise ValueError('Failed to get source of instance from item graph "source".')
 
 
 def instances_to_meshes(items: Iterable[modo.Item]) -> list[modo.Mesh]:
+    prints('Converting instances to meshes:')
+    prints(items)
     meshes = []
     modo.Scene().deselect()
     for item in items:
         item.select()
+
+    h3dd.exit('after selecting items to convert to meshes')
 
     lx.eval('item.setType Mesh')
     meshes.extend(modo.Scene().selectedByType(itype=c.MESH_TYPE))
@@ -150,8 +175,8 @@ def instances_to_meshes(items: Iterable[modo.Item]) -> list[modo.Mesh]:
 
 
 def swap_items(item1: modo.Item, item2: modo.Item):
-    loc1 = modo.Scene().addItem(itype=c.LOCATOR_TYPE, name="swap_locator1")
-    loc2 = modo.Scene().addItem(itype=c.LOCATOR_TYPE, name="swap_locator2")
+    loc1 = modo.Scene().addItem(itype=c.LOCATOR_TYPE, name='swap_locator1')
+    loc2 = modo.Scene().addItem(itype=c.LOCATOR_TYPE, name='swap_locator2')
     item1_parent = item1.parent
     item1_parent_index = get_parent_index(item1)
     item2_parent = item2.parent
@@ -181,5 +206,5 @@ def reset_transform(item: modo.Item):
     lx.eval('transform.reset all')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
