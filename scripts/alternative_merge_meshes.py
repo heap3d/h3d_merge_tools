@@ -37,4 +37,5 @@ def main():
 
 
 if __name__ == '__main__':
+    # h3dd.enable_debug_output()
     main()
