@@ -53,28 +53,61 @@ def main():
 
 def safe_merge_meshes(target_item: modo.Item, merging_items: Iterable[modo.Item], perfect_vmap_normal_name: str):
     meshes: list[modo.Item] = [i for i in merging_items if i.type == itype_str(c.MESH_TYPE)]
-    instances: list[modo.Item] = [i for i in merging_items if i.type == itype_str(c.MESHINST_TYPE)]
-    affected_instances = list(set(get_instances_of(meshes)) - set(instances))
+    merging_instances: list[modo.Item] = [i for i in merging_items if i.type == itype_str(c.MESHINST_TYPE)]
+    affected_instances = list(set(get_instances_of(meshes)) - set(merging_instances))
+    affected_target_instances = list(set(get_instances(target_item)) - set(merging_instances))
 
-    if affected_instances:
-        mesh_instance = affected_instances[0]
-        mesh = get_instance_source(mesh_instance)
-        swap_items(mesh, mesh_instance)
+    if affected_target_instances:
+        target_instance = affected_target_instances[0]
+        mesh = get_instance_source(target_instance)
 
-        meshes.remove(mesh)
-        instances.append(mesh_instance)
+        swap_items(mesh, target_instance)
 
-    converted_meshes = instances_to_meshes(instances)
+        target_item = instances_to_meshes((target_instance,))[0]
+
+    if target_item.type == itype_str(c.MESHINST_TYPE):
+        try:
+            affected_instances.remove(target_item)
+        except ValueError:
+            pass
+
+        target_item = instances_to_meshes((target_item,))[0]
+
+    while affected_instances:
+        affected_instance = affected_instances.pop(0)
+
+        instance_source_mesh = get_instance_source(affected_instance)
+
+        source_affected_instances = list(set(get_instances(instance_source_mesh)) - set(merging_instances))
+
+        instance = source_affected_instances[0]
+
+        swap_items(instance_source_mesh, instance)
+
+        try:
+            meshes.remove(instance_source_mesh)
+        except ValueError:
+            pass
+
+        merging_instances.append(instance)
+
+        for instance in source_affected_instances:
+            try:
+                affected_instances.remove(instance)
+            except ValueError:
+                pass
+
+    frozen_instances = instances_to_meshes(merging_instances)
 
     vmap_normal_maps = set()
-    for mesh in [target_item, *meshes, *converted_meshes]:
+    for mesh in [target_item, *meshes, *frozen_instances]:
         vmaps = mesh.geometry.vmaps
         if vmaps is None:
             raise ValueError(f'Mesh {mesh.name} has no vmaps interface.')
 
         vmap_normal_maps.update(vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL))
 
-    merge_meshes(target_item, meshes+converted_meshes)
+    merge_meshes(target_item, meshes + frozen_instances)
 
 
 def merge_meshes(target_item: modo.Item, merging_items: Iterable[modo.Item]):
