@@ -169,17 +169,24 @@ def safe_merge_meshes(
     return stats
 
 
-def stats_processing(stats: VMAP_NORMAL_NAMES_STATS, env: VMAP_NORMAL_ENV):
+def stats_processing(stats: VMAP_NORMAL_NAMES_STATS, env: VMAP_NORMAL_ENV, show_ok: bool = False):
     stats_message = ''
     if stats.multiple_vmap_normal_meshes:
         color_items(stats.multiple_vmap_normal_meshes, env.mark_color)
-        stats_message += f'Marked with <{env.mark_color}> meshes with more than 1 vertex normal maps.\n'
+        stats_message += f'Meshes with multiple vertex normal maps marked with <{env.mark_color}> color.\n'
 
-    if len(stats.vmap_normal_names) > 1 or env.vmap_normal_perfect_name not in stats.vmap_normal_names:
-        stats_message += f'All vertex normal maps were renamed to "{env.vmap_normal_perfect_name}".\n'
+    is_names_differs = len(stats.vmap_normal_names) > 1
+    is_valid_name = len(stats.vmap_normal_names) == 1 and env.vmap_normal_perfect_name in stats.vmap_normal_names
+    is_empty = not stats.vmap_normal_names
+
+    if is_names_differs or not (is_valid_name or is_empty):
+        stats_message += 'Invalid vertex normal map names detected.\n'
+
+    if show_ok and not stats_message:
+        stats_message = 'No issues detected with vertex normal map names.'
 
     if stats_message:
-        modo.dialogs.alert(title='Merge Meshes Warning', dtype='info', message=stats_message)
+        modo.dialogs.alert(title='Vertex Normal Map Names', dtype='info', message=stats_message)
 
 
 def get_vmap_normal_stats(meshes: Iterable[modo.Item]) -> VMAP_NORMAL_NAMES_STATS:
