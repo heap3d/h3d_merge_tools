@@ -17,8 +17,6 @@ from h3d_merge_tools.scripts.safe_merge import (
     stats_processing,
 )
 
-from h3d_utilites.scripts.h3d_debug import h3dd
-
 
 def main():
     selected_items: list[modo.Item] = [i for i in modo.Scene().selected if i.type in SELECTED_TYPES]
@@ -37,5 +35,4 @@ def main():
 
 
 if __name__ == '__main__':
-    h3dd.enable_debug_output()
     main()

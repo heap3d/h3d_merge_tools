@@ -22,8 +22,6 @@ from h3d_utilites.scripts.h3d_utils import (
     itype_str,
 )
 
-from h3d_utilites.scripts.h3d_debug import h3dd, prints, fn_in, fn_out
-
 
 USERVAL_VMAP_NORMAL_PERFECT_NAME = 'h3d_mrgt_vmap_normal_perfect_name'
 USERVAL_MARK_COLOR = 'h3d_mrgt_mark_color'
@@ -54,19 +52,9 @@ def main():
     target_item = selected_items[0]
     merging_items = selected_items[1:]
 
-    prints(target_item)
-    prints(merging_items)
-
     env = initialize_env()
 
-    prints(env.vmap_normal_perfect_name, label='env.vmap_normal_perfect_name')
-    prints(env.mark_color, label='env.mark_color')
-    prints(f'type(env.mark_color): {type(env.mark_color)}')
-
     stats = safe_merge_meshes(target_item, merging_items, env.vmap_normal_perfect_name)
-
-    prints(stats.vmap_normal_names, label='stats.vmap_normal_names')
-    prints(stats.multiple_vmap_normal_meshes, label='stats.multiple_vmap_normal_meshes')
 
     stats_processing(stats, env)
 
@@ -113,8 +101,6 @@ def safe_merge_meshes(
         merging_items: Iterable[modo.Item],
         perfect_vmap_normal_name: str,
         ) -> VMAP_NORMAL_NAMES_STATS:
-
-    fn_in()
 
     meshes: list[modo.Item] = [i for i in merging_items if i.type == itype_str(c.MESH_TYPE)]
     merging_instances: list[modo.Item] = [i for i in merging_items if i.type == itype_str(c.MESHINST_TYPE)]
@@ -170,10 +156,6 @@ def safe_merge_meshes(
     stats = get_vmap_normal_stats((target_item, *merging_meshes))
     merging_meshes -= stats.multiple_vmap_normal_meshes
 
-    prints('before vmap normal processing:')
-    prints(stats.multiple_vmap_normal_meshes, label='multiple_vmap_normal_meshes')
-    prints(merging_meshes)
-
     if target_item in stats.multiple_vmap_normal_meshes:
         if merging_meshes:
             target_item = merging_meshes.pop()
@@ -183,8 +165,6 @@ def safe_merge_meshes(
 
     if merging_meshes:
         merge_meshes(target_item, merging_meshes)
-
-    fn_out()
 
     return stats
 
@@ -326,5 +306,4 @@ def reset_transform(item: modo.Item):
 
 
 if __name__ == '__main__':
-    h3dd.enable_debug_output()
     main()
