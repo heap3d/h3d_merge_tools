@@ -172,8 +172,11 @@ def safe_merge_meshes(
 def stats_processing(stats: VMAP_NORMAL_NAMES_STATS, env: VMAP_NORMAL_ENV, show_ok: bool = False):
     stats_message = ''
     if stats.multiple_vmap_normal_meshes:
-        color_items(stats.multiple_vmap_normal_meshes, env.mark_color)
-        stats_message += f'Meshes with multiple vertex normal maps marked with <{env.mark_color}> color.\n'
+        if env.mark_color != 'none':
+            color_items(stats.multiple_vmap_normal_meshes, env.mark_color)
+            stats_message += f'Meshes with multiple vertex normal maps marked with <{env.mark_color}> color.\n'
+        else:
+            stats_message += 'Meshes with multiple vertex normal maps detected.\n'
 
     is_names_differs = len(stats.vmap_normal_names) > 1
     is_valid_name = len(stats.vmap_normal_names) == 1 and env.vmap_normal_perfect_name in stats.vmap_normal_names
