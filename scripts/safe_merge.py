@@ -22,7 +22,11 @@ from h3d_utilites.scripts.h3d_utils import (
     itype_str,
 )
 
+from h3d_utilites.scripts.h3d_debug import h3dd, prints, fn_in, fn_out
+
+
 USERVAL_VMAP_NORMAL_PERFECT_NAME = 'h3d_mrgt_vmap_normal_perfect_name'
+USERVAL_MARK_COLOR = 'h3d_mrgt_mark_color'
 DEFAULT_VMAP_NORMAL_PERFECT_NAME = 'normals'
 
 SELECTED_TYPES = (itype_str(c.MESH_TYPE), itype_str(c.MESHINST_TYPE))
@@ -30,8 +34,14 @@ SELECTED_TYPES = (itype_str(c.MESH_TYPE), itype_str(c.MESHINST_TYPE))
 
 @dataclass
 class VMAP_NORMAL_NAMES_STATS:
-    different_on_different_meshes: bool
-    multiple_on_same_mesh: bool
+    vmap_normal_names: set[str]
+    multiple_vmap_normal_meshes: set[modo.Item]
+
+
+@dataclass
+class VMAP_NORMAL_ENV:
+    vmap_normal_perfect_name: str
+    mark_color: str
 
 
 def main():
@@ -41,17 +51,71 @@ def main():
         print('Select at least 2 meshes to merge.')
         return
 
+    target_item = selected_items[0]
+    merging_items = selected_items[1:]
+
+    prints(target_item)
+    prints(merging_items)
+
+    env = initialize_env()
+
+    prints(env.vmap_normal_perfect_name, label='env.vmap_normal_perfect_name')
+    prints(env.mark_color, label='env.mark_color')
+    prints(f'type(env.mark_color): {type(env.mark_color)}')
+
+    stats = safe_merge_meshes(target_item, merging_items, env.vmap_normal_perfect_name)
+
+    prints(stats.vmap_normal_names, label='stats.vmap_normal_names')
+    prints(stats.multiple_vmap_normal_meshes, label='stats.multiple_vmap_normal_meshes')
+
+    stats_processing(stats, env)
+
+
+def initialize_env() -> VMAP_NORMAL_ENV:
     vmap_normal_perfect_name = get_user_value(USERVAL_VMAP_NORMAL_PERFECT_NAME)
     if not vmap_normal_perfect_name:
         vmap_normal_perfect_name = DEFAULT_VMAP_NORMAL_PERFECT_NAME
 
-    target_item = selected_items[0]
-    merging_items = selected_items[1:]
+    mark_color_index = int(get_user_value(USERVAL_MARK_COLOR))
+    mark_color = color_by_index(mark_color_index)
 
-    safe_merge_meshes(target_item, merging_items, vmap_normal_perfect_name)
+    return VMAP_NORMAL_ENV(
+        vmap_normal_perfect_name=vmap_normal_perfect_name,
+        mark_color=mark_color,
+    )
 
 
-def safe_merge_meshes(target_item: modo.Item, merging_items: Iterable[modo.Item], perfect_vmap_normal_name: str):
+def color_by_index(index: int) -> str:
+    color_dict = {
+        0: 'none',
+        1: 'red',
+        2: 'magenta',
+        3: 'pink',
+        4: 'brown',
+        5: 'orange',
+        6: 'yellow',
+        7: 'green',
+        8: 'cyan',
+        9: 'blue',
+        10: 'lightblue',
+        11: 'ultramarine',
+        12: 'purple',
+        13: 'lightpurple',
+        14: 'darkgrey',
+        15: 'grey',
+        16: 'white',
+    }
+    return color_dict.get(index, 'none')
+
+
+def safe_merge_meshes(
+        target_item: modo.Item,
+        merging_items: Iterable[modo.Item],
+        perfect_vmap_normal_name: str,
+        ) -> VMAP_NORMAL_NAMES_STATS:
+
+    fn_in()
+
     meshes: list[modo.Item] = [i for i in merging_items if i.type == itype_str(c.MESH_TYPE)]
     merging_instances: list[modo.Item] = [i for i in merging_items if i.type == itype_str(c.MESHINST_TYPE)]
     affected_instances = list(set(get_instances_of(meshes)) - set(merging_instances))
@@ -99,15 +163,82 @@ def safe_merge_meshes(target_item: modo.Item, merging_items: Iterable[modo.Item]
 
     frozen_instances = instances_to_meshes(merging_instances)
 
-    vmap_normal_maps = set()
-    for mesh in [target_item, *meshes, *frozen_instances]:
+    merging_meshes = set(meshes + frozen_instances)
+    if not all(mesh.type == itype_str(c.MESH_TYPE) for mesh in merging_meshes):
+        raise ValueError('All merging items must be of type "mesh".')
+
+    stats = get_vmap_normal_stats((target_item, *merging_meshes))
+    merging_meshes -= stats.multiple_vmap_normal_meshes
+
+    prints('before vmap normal processing:')
+    prints(stats.multiple_vmap_normal_meshes, label='multiple_vmap_normal_meshes')
+    prints(merging_meshes)
+
+    if target_item in stats.multiple_vmap_normal_meshes:
+        if merging_meshes:
+            target_item = merging_meshes.pop()
+
+    if len(stats.vmap_normal_names) > 1 or perfect_vmap_normal_name not in stats.vmap_normal_names:
+        rename_vmap_normals((target_item, *merging_meshes), perfect_vmap_normal_name)
+
+    if merging_meshes:
+        merge_meshes(target_item, merging_meshes)
+
+    fn_out()
+
+    return stats
+
+
+def stats_processing(stats: VMAP_NORMAL_NAMES_STATS, env: VMAP_NORMAL_ENV):
+    stats_message = ''
+    if stats.multiple_vmap_normal_meshes:
+        color_items(stats.multiple_vmap_normal_meshes, env.mark_color)
+        stats_message += f'Marked with <{env.mark_color}> meshes with more than 1 vertex normal maps.\n'
+
+    if len(stats.vmap_normal_names) > 1 or env.vmap_normal_perfect_name not in stats.vmap_normal_names:
+        stats_message += f'All vertex normal maps were renamed to "{env.vmap_normal_perfect_name}".\n'
+
+    if stats_message:
+        modo.dialogs.alert(title='Merge Meshes Warning', dtype='info', message=stats_message)
+
+
+def get_vmap_normal_stats(meshes: Iterable[modo.Item]) -> VMAP_NORMAL_NAMES_STATS:
+    vmap_normal_names = set()
+    meshes_with_multiple_vmap_normal_maps = set()
+    for mesh in meshes:
         vmaps = mesh.geometry.vmaps
         if vmaps is None:
             raise ValueError(f'Mesh {mesh.name} has no vmaps interface.')
 
-        vmap_normal_maps.update(vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL))
+        vmap_normal_maps = vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL)
+        if len(vmap_normal_maps) > 1:
+            meshes_with_multiple_vmap_normal_maps.add(mesh)
+        for vmap in vmap_normal_maps:
+            vmap_normal_names.add(vmap.name)
 
-    merge_meshes(target_item, meshes + frozen_instances)
+    return VMAP_NORMAL_NAMES_STATS(
+        vmap_normal_names=vmap_normal_names,
+        multiple_vmap_normal_meshes=meshes_with_multiple_vmap_normal_maps,
+    )
+
+
+def color_items(items: Iterable[modo.Item], color: str):
+    modo.Scene().deselect()
+    for item in items:
+        item.select()
+
+    lx.eval(f'item.editorColor {color}')
+
+
+def rename_vmap_normals(meshes: Iterable[modo.Item], vmap_normal_name: str):
+    for mesh in meshes:
+        vmaps = mesh.geometry.vmaps
+        if vmaps is None:
+            raise ValueError(f'Mesh {mesh.name} has no vmaps interface.')
+
+        vmap_normal_maps = vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL)
+        for vmap in vmap_normal_maps:
+            vmap.name = vmap_normal_name
 
 
 def merge_meshes(target_item: modo.Item, merging_items: Iterable[modo.Item]):
@@ -122,28 +253,6 @@ def merge_meshes(target_item: modo.Item, merging_items: Iterable[modo.Item]):
         mesh.select()
 
     lx.eval('layer.mergeMeshes true')
-
-
-def get_vmap_normal_stats(meshes: Iterable[modo.Mesh]) -> VMAP_NORMAL_NAMES_STATS:
-    vmap_normal_names = set()
-    multiple_on_same_mesh = False
-    for mesh in meshes:
-        vmaps = mesh.geometry.vmaps
-        if vmaps is None:
-            raise ValueError(f'Mesh {mesh.name} has no vmaps interface.')
-
-        vmap_normal_maps = vmaps.getMapsByType(lx.symbol.i_VMAP_NORMAL)
-        if len(vmap_normal_maps) > 1:
-            multiple_on_same_mesh = True
-        for vmap in vmap_normal_maps:
-            vmap_normal_names.add(vmap.name)
-
-    different_on_different_meshes = len(vmap_normal_names) > 1
-
-    return VMAP_NORMAL_NAMES_STATS(
-        different_on_different_meshes=different_on_different_meshes,
-        multiple_on_same_mesh=multiple_on_same_mesh
-    )
 
 
 def get_instances(item: modo.Item) -> list[modo.Item]:
@@ -217,4 +326,5 @@ def reset_transform(item: modo.Item):
 
 
 if __name__ == '__main__':
+    h3dd.enable_debug_output()
     main()
