@@ -14,7 +14,7 @@ import lx
 from h3d_utilites.scripts.h3d_utils import execution_time_alarm
 
 
-@execution_time_alarm
+@execution_time_alarm(fn_name='Unmerge Mesh')
 def main():
     lx.eval('layer.unmergeMeshes')
 
