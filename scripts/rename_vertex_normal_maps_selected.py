@@ -13,6 +13,8 @@ import modo
 
 from h3d_merge_tools.scripts.safe_merge import get_vmap_normal_stats, initialize_env, rename_vmap_normals
 
+from h3d_utilites.scripts.h3d_utils import ExecutionTimerAlarm
+
 
 def main():
     selected_meshes = modo.Scene().selectedByType('mesh')
@@ -23,6 +25,9 @@ def main():
     valid_meshes = set(selected_meshes) - stats.multiple_vmap_normal_meshes
     rename_vmap_normals(valid_meshes, env.vmap_normal_perfect_name)
 
+    alarm_timer.finish()
+
 
 if __name__ == '__main__':
+    alarm_timer = ExecutionTimerAlarm('Rename Vertex Normal Map')
     main()

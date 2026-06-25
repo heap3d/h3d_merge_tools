@@ -20,6 +20,7 @@ from h3d_utilites.scripts.h3d_utils import (
     parent_items_to,
     get_parent_index,
     itype_str,
+    ExecutionTimerAlarm,
 )
 
 
@@ -56,7 +57,7 @@ def main():
 
     stats = safe_merge_meshes(target_item, merging_items, env.vmap_normal_perfect_name)
 
-    stats_processing(stats, env)
+    stats_processing(stats, env, alarm_timer)
 
 
 def initialize_env() -> VMAP_NORMAL_ENV:
@@ -169,7 +170,7 @@ def safe_merge_meshes(
     return stats
 
 
-def stats_processing(stats: VMAP_NORMAL_NAMES_STATS, env: VMAP_NORMAL_ENV, show_ok: bool = False):
+def stats_processing(stats: VMAP_NORMAL_NAMES_STATS, env: VMAP_NORMAL_ENV, alarm_timer: ExecutionTimerAlarm, show_ok: bool = False):
     stats_message = ''
     if stats.multiple_vmap_normal_meshes:
         if env.mark_color != 'none':
@@ -187,6 +188,8 @@ def stats_processing(stats: VMAP_NORMAL_NAMES_STATS, env: VMAP_NORMAL_ENV, show_
 
     if show_ok and not stats_message:
         stats_message = 'No issues detected with vertex normal map names.'
+
+    alarm_timer.finish()
 
     if stats_message:
         modo.dialogs.alert(title='Vertex Normal Map Names', dtype='info', message=stats_message)
@@ -316,4 +319,5 @@ def reset_transform(item: modo.Item):
 
 
 if __name__ == '__main__':
+    alarm_timer = ExecutionTimerAlarm('Merge Meshes to First')
     main()

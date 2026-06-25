@@ -17,6 +17,8 @@ from h3d_merge_tools.scripts.safe_merge import (
     stats_processing,
 )
 
+from h3d_utilites.scripts.h3d_utils import ExecutionTimerAlarm
+
 
 def main():
     selected_items: list[modo.Item] = [i for i in modo.Scene().selected if i.type in SELECTED_TYPES]
@@ -31,8 +33,9 @@ def main():
 
     stats = safe_merge_meshes(target_mesh, merging_meshes, env.vmap_normal_perfect_name)
 
-    stats_processing(stats, env)
+    stats_processing(stats, env, alarm_timer)
 
 
 if __name__ == '__main__':
+    alarm_timer = ExecutionTimerAlarm('Merge Meshes to Last')
     main()
