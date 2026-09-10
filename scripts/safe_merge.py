@@ -176,7 +176,7 @@ def stats_processing(
         alarm_timer: ExecutionTimerAlarm,
         show_ok: bool = False,
         supress_warnings: bool = False
-    ):
+    ) -> str:
     stats_message = ''
     if stats.multiple_vmap_normal_meshes:
         if env.mark_color != 'none':
@@ -192,13 +192,15 @@ def stats_processing(
     if is_names_differs or not (is_valid_name or is_empty):
         stats_message += 'Invalid vertex normal map names detected.\n'
 
-    if show_ok and not stats_message and not supress_warnings:
+    if show_ok and not stats_message:
         stats_message = 'No issues detected with vertex normal map names.'
 
     alarm_timer.finish()
 
     if stats_message and not supress_warnings:
         modo.dialogs.alert(title='Vertex Normal Map Names', dtype='info', message=stats_message)
+
+    return stats_message
 
 
 def get_vmap_normal_stats(meshes: Iterable[modo.Item]) -> VMAP_NORMAL_NAMES_STATS:

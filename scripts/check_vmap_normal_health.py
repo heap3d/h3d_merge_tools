@@ -27,8 +27,8 @@ def check_vmap_normal_health(
         show_ok:bool=False,
         alarm_timer: Optional[ExecutionTimerAlarm] = None,
         supress_warnings: bool = False
-    ):
-    
+    ) -> str:
+
     meshes = modo.Scene().items(itype=c.MESH_TYPE)
     stats = get_vmap_normal_stats(meshes)
 
@@ -37,7 +37,9 @@ def check_vmap_normal_health(
     if not alarm_timer:
         alarm_timer = ExecutionTimerAlarm('Check Vertex Normal Map Names NO ALARM')
         alarm_timer.enabled = False
-    stats_processing(stats, env, alarm_timer, show_ok=show_ok, supress_warnings=supress_warnings)
+    message = stats_processing(stats, env, alarm_timer, show_ok=show_ok, supress_warnings=supress_warnings)
+
+    return message
 
 
 if __name__ == '__main__':
