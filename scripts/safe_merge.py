@@ -21,6 +21,7 @@ from h3d_utilites.scripts.h3d_utils import (
     get_parent_index,
     itype_str,
     ExecutionTimerAlarm,
+    select_if_exists
 )
 
 
@@ -34,6 +35,7 @@ SELECTED_TYPES = (itype_str(c.MESH_TYPE), itype_str(c.MESHINST_TYPE))
 @dataclass
 class VMAP_NORMAL_NAMES_STATS:
     vmap_normal_names: set[str]
+    invalid_vmap_normal_name_meshes: set[modo.Item]
     multiple_vmap_normal_meshes: set[modo.Item]
 
 
@@ -154,7 +156,7 @@ def safe_merge_meshes(
     if not all(mesh.type == itype_str(c.MESH_TYPE) for mesh in merging_meshes):
         raise ValueError('All merging items must be of type "mesh".')
 
-    stats = get_vmap_normal_stats((target_item, *merging_meshes))
+    stats = get_vmap_normal_stats((target_item, *merging_meshes), perfect_vmap_normal_name)
     merging_meshes -= stats.multiple_vmap_normal_meshes
 
     if target_item in stats.multiple_vmap_normal_meshes:
@@ -203,8 +205,9 @@ def stats_processing(
     return stats_message
 
 
-def get_vmap_normal_stats(meshes: Iterable[modo.Item]) -> VMAP_NORMAL_NAMES_STATS:
+def get_vmap_normal_stats(meshes: Iterable[modo.Item], perfect_vmap_normal_name: str) -> VMAP_NORMAL_NAMES_STATS:
     vmap_normal_names = set()
+    invalid_vmap_normal_name_meshes = set()
     meshes_with_multiple_vmap_normal_maps = set()
     for mesh in meshes:
         vmaps = mesh.geometry.vmaps
@@ -216,18 +219,21 @@ def get_vmap_normal_stats(meshes: Iterable[modo.Item]) -> VMAP_NORMAL_NAMES_STAT
             meshes_with_multiple_vmap_normal_maps.add(mesh)
         for vmap in vmap_normal_maps:
             vmap_normal_names.add(vmap.name)
+            if  vmap.name != perfect_vmap_normal_name:
+                invalid_vmap_normal_name_meshes.add(mesh)
 
     return VMAP_NORMAL_NAMES_STATS(
         vmap_normal_names=vmap_normal_names,
+        invalid_vmap_normal_name_meshes=invalid_vmap_normal_name_meshes,
         multiple_vmap_normal_meshes=meshes_with_multiple_vmap_normal_maps,
     )
 
 
 def color_items(items: Iterable[modo.Item], color: str):
     modo.Scene().deselect()
-    for item in items:
-        item.select()
-
+    if not items:
+        return
+    select_if_exists(items)
     lx.eval(f'item.editorColor {color}')
 
 
