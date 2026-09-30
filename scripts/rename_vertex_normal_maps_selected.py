@@ -20,7 +20,7 @@ def main():
     selected_meshes = modo.Scene().selectedByType('mesh')
 
     env = initialize_env()
-    stats = get_vmap_normal_stats(selected_meshes)
+    stats = get_vmap_normal_stats(selected_meshes, env.vmap_normal_perfect_name)
 
     valid_meshes = set(selected_meshes) - stats.multiple_vmap_normal_meshes
     rename_vmap_normals(valid_meshes, env.vmap_normal_perfect_name)
